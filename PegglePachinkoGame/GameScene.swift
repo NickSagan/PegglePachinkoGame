@@ -64,6 +64,10 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         addBouncer(at: CGPoint(x: 768, y: 0))
         addBouncer(at: CGPoint(x: 1024, y: 0))
         
+        //addHorizontalBox(at: CGPoint(x: 1024, y: 256), height: 32, width: 256)
+        //addHorizontalBox(at: CGPoint(x: 0, y: 384), height: 32, width: 256)
+        addRotatedBox(at: CGPoint(x: 128, y: 256), height: 16, width: 256)
+        
         makeSlot(at: CGPoint(x: 128, y: 0), isGood: true)
         makeSlot(at: CGPoint(x: 384, y: 0), isGood: false)
         makeSlot(at: CGPoint(x: 640, y: 0), isGood: true)
@@ -108,7 +112,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                 let box = SKSpriteNode(color: UIColor(red: CGFloat.random(in: 0...1), green: CGFloat.random(in: 0...1), blue: CGFloat.random(in: 0...1), alpha: 1) ,size: size)
                 box.zRotation = CGFloat.random(in: 0...3)
                 box.position = location
-                
+                box.zPosition = 10
                 box.physicsBody = SKPhysicsBody(rectangleOf: box.size)
                 box.physicsBody?.isDynamic = false
                 box.name = "box"
@@ -140,7 +144,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                 
                 ball.position = location
                 ball.name = "ball"
-                ball.zPosition = 5
+                ball.zPosition = 100
                 addChild(ball)
             }
         }
@@ -154,6 +158,64 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         bouncer.name = "bouncer"
         bouncer.zPosition = 4
         addChild(bouncer)
+    }
+    
+    func addHorizontalBox(at position: CGPoint, height: Int, width: Int) {
+        let size = CGSize(width: width, height: height)
+        let box = SKSpriteNode(color: UIColor(red: CGFloat.random(in: 0...1), green: CGFloat.random(in: 0...1), blue: CGFloat.random(in: 0...1), alpha: 1) ,size: size)
+        //box.zRotation = CGFloat.random(in: 0...3)
+        box.position = position
+        box.zPosition = 10
+        box.physicsBody = SKPhysicsBody(rectangleOf: box.size)
+        box.physicsBody?.isDynamic = false
+        box.name = "box"
+        boxes.append(box)
+        addChild(box)
+        
+        if box.position.x > frame.width / 2 {
+            let leftSlide = SKAction.move(by: CGVector(dx: -900, dy: 0), duration: 2)
+            let rightSlide = SKAction.move(by: CGVector(dx: 900, dy: 0), duration: 2)
+            let leftAndRightSlide = SKAction.sequence([leftSlide, rightSlide])
+            let moveForever = SKAction.repeatForever(leftAndRightSlide)
+            box.run(moveForever)
+        } else {
+            let rightSlide = SKAction.move(by: CGVector(dx: 900, dy: 0), duration: 2)
+            let leftSlide = SKAction.move(by: CGVector(dx: -900, dy: 0), duration: 2)
+            let leftAndRightSlide = SKAction.sequence([rightSlide, leftSlide])
+            let moveForever = SKAction.repeatForever(leftAndRightSlide)
+            box.run(moveForever)
+        }
+    }
+    
+    func addRotatedBox(at position: CGPoint, height: Int, width: Int) {
+        let size = CGSize(width: width, height: height)
+        let box = SKSpriteNode(color: UIColor(red: CGFloat.random(in: 0...1), green: CGFloat.random(in: 0...1), blue: CGFloat.random(in: 0...1), alpha: 1) ,size: size)
+        box.zRotation = 1
+        box.position = position
+        box.zPosition = 10
+        box.physicsBody = SKPhysicsBody(rectangleOf: box.size)
+        box.physicsBody?.isDynamic = false
+        box.name = "box"
+        boxes.append(box)
+        addChild(box)
+        
+        if box.position.x > frame.width / 2 {
+            let leftSlide = SKAction.move(by: CGVector(dx: -600, dy: -32), duration: 2)
+            let rightSlide = SKAction.move(by: CGVector(dx: 600, dy: 32), duration: 2)
+            let leftAndRightSlide = SKAction.sequence([leftSlide, rightSlide])
+            let moveForever = SKAction.repeatForever(leftAndRightSlide)
+            box.run(moveForever)
+        } else {
+            let rightSlide = SKAction.move(by: CGVector(dx: 600, dy: -32), duration: 2)
+            let leftSlide = SKAction.move(by: CGVector(dx: -600, dy: 32), duration: 2)
+            let leftAndRightSlide = SKAction.sequence([rightSlide, leftSlide])
+            let moveForever = SKAction.repeatForever(leftAndRightSlide)
+            box.run(moveForever)
+        }
+        
+        let spin = SKAction.rotate(byAngle: .pi, duration: 1)
+        let spinForever = SKAction.repeatForever(spin)
+        box.run(spinForever)
     }
     
     func makeSlot(at position: CGPoint, isGood: Bool){
@@ -189,8 +251,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     func collision(between ball: SKNode, object: SKNode) {
         if object.name == "good" {
-            destroy(ball: ball)
-            score += 1
+            remove(ball: ball)
         } else if object.name == "bad" {
             destroy(ball: ball)
             score -= 1
@@ -198,11 +259,33 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
     
     func destroy(ball: SKNode) {
+        let ballPosition = ball.position
+        
         if let fireparticles = SKEmitterNode(fileNamed: "FireParticles") {
-            fireparticles.position = ball.position
+            fireparticles.position = ballPosition
             addChild(fireparticles)
+            let wait = SKAction.wait(forDuration: 5)
+            let delete = SKAction.removeFromParent()
+            let waitAndDelete = SKAction.sequence([wait, delete])
+            fireparticles.run(waitAndDelete)
         }
+        
         ball.removeFromParent()
+    }
+    
+    func remove(ball: SKNode) {
+        ball.physicsBody = nil
+        ball.alpha = 0.5
+        
+        let moveToScore = SKAction.move(to: scoreLabel.position, duration: 0.5)
+        let addScore = SKAction.run {
+            self.score += 1
+        }
+        let remove = SKAction.removeFromParent()
+        let moveAndRemove = SKAction.sequence([moveToScore, addScore, remove])
+        
+        ball.run(moveAndRemove)
+        
     }
     
     func didBegin(_ contact: SKPhysicsContact) {
